@@ -254,6 +254,28 @@ function onSearchKeydown(e) {
   }
 }
 
+/* ── Close (handles both iframe overlay & standalone window) ── */
+function closePopup() {
+  if (window !== window.top) {
+    // Running inside the content script's iframe overlay
+    window.parent.postMessage({ action: 'spotlight-close' }, '*');
+  } else {
+    // Standalone popup window
+    try {
+      chrome.runtime.sendMessage({ action: 'closeSpotlight' });
+    } catch {
+      window.close();
+    }
+  }
+}
+
+// Listen for focus messages from the content script (re-open while already open)
+window.addEventListener('message', (event) => {
+  if (event.data.action === 'spotlight-focus') {
+    searchInput.focus();
+  }
+});
+
 /* ── Activate ── */
 function activateResult(r) {
   if (r.isSearch) {
@@ -281,15 +303,6 @@ function openInNewTab(r) {
     chrome.tabs.create({ url: r.url });
   }
   closePopup();
-}
-
-function closePopup() {
-  try {
-    chrome.runtime.sendMessage({ action: 'closeSpotlight' });
-  } catch {
-    // Fallback: close the window directly
-    window.close();
-  }
 }
 
 /* ── Clear / Hide ── */

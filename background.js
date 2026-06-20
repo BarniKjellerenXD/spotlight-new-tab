@@ -4,29 +4,39 @@
 
 'use strict';
 
-// Opens the spotlight search popup window
-function openSpotlightWindow() {
-  chrome.windows.create({
-    url: 'popup.html',
-    type: 'popup',
-    width: 680,
-    height: 520,
-  });
-}
+// Triggered by Ctrl+E / Cmd+E (via _execute_action command)
+// or by clicking the extension toolbar icon
+chrome.action.onClicked.addListener(async (tab) => {
+  // Don't open on chrome:// pages (they're privileged)
+  if (tab.url?.startsWith('chrome://') || tab.url?.startsWith('brave://') || tab.url?.startsWith('edge://')) {
+    return;
+  }
 
-// Triggered by:
-//  - Ctrl+E / Cmd+E (via _execute_action command)
-//  - Clicking the extension toolbar icon
-chrome.action.onClicked.addListener(() => {
-  openSpotlightWindow();
+  try {
+    // Check if the content script is already loaded by trying to send a message
+    try {
+      await chrome.tabs.sendMessage(tab.id, { action: 'spotlight-ping' });
+      // Content script is already loaded — just tell it to open
+      chrome.tabs.sendMessage(tab.id, { action: 'spotlight-toggle' });
+      return;
+    } catch {
+      // Not loaded yet — inject it
+      await chrome.scripting.executeScript({
+        target: { tabId: tab.id },
+        files: ['content.js'],
+      });
+    }
+  } catch (err) {
+    console.error('Spotlight: Failed to inject overlay', err);
+  }
 });
 
-// Listen for messages from the popup page
-chrome.runtime.onMessage.addListener((message, sender) => {
-  if (message.action === 'closeSpotlight') {
-    // Close the popup window after a result is opened
-    const winId = sender.tab?.windowId;
-    if (winId) chrome.windows.remove(winId);
+// Listen for search requests from the content script
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  switch (message.action) {
+    case 'spotlight-ping':
+      sendResponse({ ok: true });
+      break;
   }
 });
 
