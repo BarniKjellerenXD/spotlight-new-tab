@@ -17,9 +17,26 @@ let allBookmarks = [];
 let allTabs      = [];
 let activeIndex  = -1;
 let currentResults = [];
+let settings = {};
+
+const DEFAULT_SETTINGS = {
+  resultOrder: ['tabs', 'web', 'bookmarks', 'history'],
+};
+
+/* ── Load settings from chrome.storage ── */
+function loadSettings() {
+  return new Promise((resolve) => {
+    chrome.storage.local.get('spotlightSettings', (data) => {
+      settings = { ...DEFAULT_SETTINGS, ...(data.spotlightSettings || {}) };
+      resolve();
+    });
+  });
+}
 
 /* ── Init ── */
 async function init() {
+  await loadSettings();
+
   await Promise.all([
     loadBookmarks(),
     loadTabs(),
@@ -93,34 +110,45 @@ function onSearchInput() {
 async function performSearch(query) {
   const lower = query.toLowerCase();
   let results = [];
+  const order = settings.resultOrder || ['tabs', 'web', 'bookmarks', 'history'];
 
-  // 1. Web search pill — always first
-  results.push({
-    type: 'web', title: `Search "${query}" with your default search engine`,
-    url: query, subtitle: 'Open in browser', isSearch: true,
-  });
+  // Pre-load history if it's in the order
+  let histResults = [];
+  if (order.includes('history')) {
+    const hist = await loadHistory(query);
+    histResults = hist.slice(0, 8).map((h) => ({ type: 'history', title: h.title, url: h.url, subtitle: h.url }));
+  }
 
-  // 2. Bookmarks
-  results = results.concat(
-    allBookmarks.filter((b) => b.title.toLowerCase().includes(lower) || b.url.toLowerCase().includes(lower))
-      .slice(0, 8).map((b) => ({ type: 'bookmark', title: b.title, url: b.url, subtitle: b.url }))
-  );
-
-  // 3. Open Tabs
-  results = results.concat(
-    allTabs.filter((t) => t.title.toLowerCase().includes(lower) || t.url.toLowerCase().includes(lower))
-      .slice(0, 5).map((t) => ({
-        type: 'tab', title: t.title, url: t.url,
-        subtitle: `Switch to tab — ${new URL(t.url).hostname}`,
-        tabId: t.tabId, windowId: t.windowId, favIconUrl: t.favIconUrl,
-      }))
-  );
-
-  // 4. History — last, least useful
-  const hist = await loadHistory(query);
-  results = results.concat(
-    hist.slice(0, 8).map((h) => ({ type: 'history', title: h.title, url: h.url, subtitle: h.url }))
-  );
+  // Build results in configured order
+  for (const source of order) {
+    switch (source) {
+      case 'web':
+        results.push({
+          type: 'web', title: `Search "${query}" with your default search engine`,
+          url: query, subtitle: 'Open in browser', isSearch: true,
+        });
+        break;
+      case 'bookmarks':
+        results = results.concat(
+          allBookmarks.filter((b) => b.title.toLowerCase().includes(lower) || b.url.toLowerCase().includes(lower))
+            .slice(0, 8).map((b) => ({ type: 'bookmark', title: b.title, url: b.url, subtitle: b.url }))
+        );
+        break;
+      case 'tabs':
+        results = results.concat(
+          allTabs.filter((t) => t.title.toLowerCase().includes(lower) || t.url.toLowerCase().includes(lower))
+            .slice(0, 5).map((t) => ({
+              type: 'tab', title: t.title, url: t.url,
+              subtitle: `Switch to tab — ${new URL(t.url).hostname}`,
+              tabId: t.tabId, windowId: t.windowId, favIconUrl: t.favIconUrl,
+            }))
+        );
+        break;
+      case 'history':
+        results = results.concat(histResults);
+        break;
+    }
+  }
 
   // Deduplicate
   const seen = new Set();

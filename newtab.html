@@ -89,6 +89,38 @@
         <span class="setting-label">Show Most Visited</span>
       </label>
       <hr />
+      <h2>Result Order</h2>
+      <div id="order-controls">
+        <div class="order-item" data-source="tabs">
+          <span class="order-label">Open Tabs</span>
+          <div class="order-buttons">
+            <button class="order-up" title="Move up">↑</button>
+            <button class="order-down" title="Move down">↓</button>
+          </div>
+        </div>
+        <div class="order-item" data-source="web">
+          <span class="order-label">Web Search</span>
+          <div class="order-buttons">
+            <button class="order-up" title="Move up">↑</button>
+            <button class="order-down" title="Move down">↓</button>
+          </div>
+        </div>
+        <div class="order-item" data-source="bookmarks">
+          <span class="order-label">Bookmarks</span>
+          <div class="order-buttons">
+            <button class="order-up" title="Move up">↑</button>
+            <button class="order-down" title="Move down">↓</button>
+          </div>
+        </div>
+        <div class="order-item" data-source="history">
+          <span class="order-label">History</span>
+          <div class="order-buttons">
+            <button class="order-up" title="Move up">↑</button>
+            <button class="order-down" title="Move down">↓</button>
+          </div>
+        </div>
+      </div>
+      <hr />
       <h2>Theme</h2>
       <label class="setting-row">
         <input type="checkbox" id="toggle-blur" checked />

@@ -39,6 +39,7 @@ const DEFAULT_SETTINGS = {
   topSites:  true,
   blur:      true,
   showTime:  true,
+  resultOrder: ['tabs', 'web', 'bookmarks', 'history'],
 };
 
 /* ── Settings ── */
@@ -115,6 +116,34 @@ async function init() {
   settingsBtn.addEventListener('click', openSettings);
   $$('#settings-panel input[type="checkbox"]').forEach((cb) => {
     cb.addEventListener('change', onSettingChange);
+  });
+  // Order controls
+  $('#order-controls')?.addEventListener('click', (e) => {
+    const btn = e.target.closest('.order-up, .order-down');
+    if (!btn) return;
+    const item = btn.closest('.order-item');
+    const source = item?.dataset.source;
+    if (!source) return;
+
+    const order = settings.resultOrder || ['tabs', 'web', 'bookmarks', 'history'];
+    const idx = order.indexOf(source);
+    if (idx === -1) return;
+
+    if (btn.classList.contains('order-up') && idx > 0) {
+      [order[idx - 1], order[idx]] = [order[idx], order[idx - 1]];
+    } else if (btn.classList.contains('order-down') && idx < order.length - 1) {
+      [order[idx], order[idx + 1]] = [order[idx + 1], order[idx]];
+    } else {
+      return;
+    }
+
+    settings.resultOrder = order;
+    saveSettings();
+    syncOrderControls();
+    // Re-run search if there's an active query
+    if (searchInput.value.trim()) {
+      performSearch(searchInput.value.trim());
+    }
   });
   $('#settings-close').addEventListener('click', closeSettings);
   settingsPanel.addEventListener('click', (e) => {
@@ -255,59 +284,58 @@ function onSearchInput() {
 async function performSearch(query) {
   const lower = query.toLowerCase();
   let results = [];
+  const order = settings.resultOrder || ['tabs', 'web', 'bookmarks', 'history'];
 
-  // 1. Web search — always first
-  if (sources.web) {
-    results.push({
-      type: 'web',
-      title: `Search "${query}" with your default search engine`,
-      url: query,
-      subtitle: 'Open in browser',
-      isSearch: true,
-    });
-  }
-
-  // 2. Bookmarks
-  if (sources.bookmarks) {
-    const matches = allBookmarks.filter((b) =>
-      b.title.toLowerCase().includes(lower) ||
-      b.url.toLowerCase().includes(lower)
-    ).slice(0, 8).map((b) => ({
-      type: 'bookmark',
-      title: b.title,
-      url: b.url,
-      subtitle: b.url,
-    }));
-    results = results.concat(matches);
-  }
-
-  // 3. Open Tabs
-  if (sources.tabs) {
-    const matches = allTabs.filter((t) =>
-      t.title.toLowerCase().includes(lower) ||
-      t.url.toLowerCase().includes(lower)
-    ).slice(0, 5).map((t) => ({
-      type: 'tab',
-      title: t.title,
-      url: t.url,
-      subtitle: `Switch to tab — ${new URL(t.url).hostname}`,
-      tabId: t.tabId,
-      windowId: t.windowId,
-      favIconUrl: t.favIconUrl,
-    }));
-    results = results.concat(matches);
-  }
-
-  // 4. History — last, least useful
-  if (sources.history) {
+  // Pre-load history if it's in the order and enabled
+  let histResults = [];
+  if (order.includes('history') && sources.history) {
     const hist = await loadHistory(query);
-    const matches = hist.slice(0, 8).map((h) => ({
-      type: 'history',
-      title: h.title,
-      url: h.url,
-      subtitle: h.url,
+    histResults = hist.slice(0, 8).map((h) => ({
+      type: 'history', title: h.title, url: h.url, subtitle: h.url,
     }));
-    results = results.concat(matches);
+  }
+
+  // Build results in configured order
+  for (const source of order) {
+    if (!sources[source]) continue;
+
+    switch (source) {
+      case 'web':
+        results.push({
+          type: 'web',
+          title: `Search "${query}" with your default search engine`,
+          url: query,
+          subtitle: 'Open in browser',
+          isSearch: true,
+        });
+        break;
+
+      case 'bookmarks': {
+        const matches = allBookmarks.filter((b) =>
+          b.title.toLowerCase().includes(lower) || b.url.toLowerCase().includes(lower)
+        ).slice(0, 8).map((b) => ({
+          type: 'bookmark', title: b.title, url: b.url, subtitle: b.url,
+        }));
+        results = results.concat(matches);
+        break;
+      }
+
+      case 'tabs': {
+        const matches = allTabs.filter((t) =>
+          t.title.toLowerCase().includes(lower) || t.url.toLowerCase().includes(lower)
+        ).slice(0, 5).map((t) => ({
+          type: 'tab', title: t.title, url: t.url,
+          subtitle: `Switch to tab — ${new URL(t.url).hostname}`,
+          tabId: t.tabId, windowId: t.windowId, favIconUrl: t.favIconUrl,
+        }));
+        results = results.concat(matches);
+        break;
+      }
+
+      case 'history':
+        results = results.concat(histResults);
+        break;
+    }
   }
 
   // Deduplicate by URL
@@ -597,6 +625,8 @@ function openSettings() {
   $('#toggle-blur').checked      = settings.blur;
   $('#toggle-time').checked      = settings.showTime;
 
+  syncOrderControls();
+
   settingsPanel.classList.add('open');
 }
 
@@ -625,6 +655,32 @@ function onSettingChange(e) {
       performSearch(searchInput.value.trim());
     }
   }
+}
+
+/* ── Sync order controls with current settings ── */
+function syncOrderControls() {
+  const order = settings.resultOrder || ['tabs', 'web', 'bookmarks', 'history'];
+  const container = $('#order-controls');
+  if (!container) return;
+
+  // Re-order the DOM items to match the order array
+  const items = container.querySelectorAll('.order-item');
+  const map = {};
+  items.forEach((el) => { map[el.dataset.source] = el; });
+
+  order.forEach((source) => {
+    const el = map[source];
+    if (el) container.appendChild(el); // move to end in desired order
+  });
+
+  // Disable buttons at boundaries
+  const ordered = container.querySelectorAll('.order-item');
+  ordered.forEach((el, i) => {
+    el.querySelector('.order-up').disabled = i === 0;
+    el.querySelector('.order-up').style.opacity = i === 0 ? '0.3' : '1';
+    el.querySelector('.order-down').disabled = i === ordered.length - 1;
+    el.querySelector('.order-down').style.opacity = i === ordered.length - 1 ? '0.3' : '1';
+  });
 }
 
 /* ── Start ── */
