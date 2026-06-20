@@ -55,6 +55,8 @@ https://github.com/user-attachments/assets/5aa002f3-3b15-4088-8fdd-0d65e8b5a265
 | `⌘` `↵` / `Ctrl` `↵` | Open in new tab |
 | `Esc` | Clear search / close popup |
 
+> **⚠️ Brave users:** If `Ctrl+E` still opens Brave's address bar search instead of Spotlight, go to **`brave://extensions/shortcuts`**, find "Spotlight", click the shortcut input for `_execute_action`, and press `Ctrl+E`. This manually overrides Brave's default.
+
 ## ⚙️ Settings
 
 Click the gear icon (bottom-left) to open the settings panel:

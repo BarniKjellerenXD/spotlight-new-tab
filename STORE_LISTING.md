@@ -5,7 +5,11 @@ A beautiful spotlight-style search overlay for your new tab page. Search bookmar
 
 ## Full Description
 
-**Spotlight New Tab** transforms your browser's new tab page into an elegant, keyboard-driven search experience — inspired by Zen Browser's spotlight and Vivaldi's Ctrl+E quick search.
+**Spotlight** transforms your browser into an elegant, keyboard-driven search experience — inspired by Zen Browser's spotlight and Vivaldi's Ctrl+E quick search.
+
+### Two ways to use it:
+- **Press `Ctrl+E` / `Cmd+E`** from any page to open a floating spotlight popup
+- **Open a new tab** for the full-page glassmorphism search with quick links
 
 ### ✨ Features
 

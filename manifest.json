@@ -22,7 +22,7 @@
     "128": "icons/icon128.png"
   },
   "commands": {
-    "open-spotlight": {
+    "_execute_action": {
       "suggested_key": {
         "default": "Ctrl+E",
         "mac": "Command+E"
@@ -34,7 +34,6 @@
     "service_worker": "background.js"
   },
   "action": {
-    "default_title": "Spotlight Search (Ctrl+E)",
-    "default_popup": "popup.html"
+    "default_title": "Spotlight Search (Ctrl+E)"
   }
 }
