@@ -94,13 +94,19 @@ async function performSearch(query) {
   const lower = query.toLowerCase();
   let results = [];
 
-  // Bookmarks
+  // 1. Web search pill — always first
+  results.push({
+    type: 'web', title: `Search "${query}" with your default search engine`,
+    url: query, subtitle: 'Open in browser', isSearch: true,
+  });
+
+  // 2. Bookmarks
   results = results.concat(
     allBookmarks.filter((b) => b.title.toLowerCase().includes(lower) || b.url.toLowerCase().includes(lower))
       .slice(0, 8).map((b) => ({ type: 'bookmark', title: b.title, url: b.url, subtitle: b.url }))
   );
 
-  // Open Tabs
+  // 3. Open Tabs
   results = results.concat(
     allTabs.filter((t) => t.title.toLowerCase().includes(lower) || t.url.toLowerCase().includes(lower))
       .slice(0, 5).map((t) => ({
@@ -110,17 +116,11 @@ async function performSearch(query) {
       }))
   );
 
-  // History
+  // 4. History — last, least useful
   const hist = await loadHistory(query);
   results = results.concat(
     hist.slice(0, 8).map((h) => ({ type: 'history', title: h.title, url: h.url, subtitle: h.url }))
   );
-
-  // Web search pill
-  results.push({
-    type: 'web', title: `Search "${query}" with your default search engine`,
-    url: query, subtitle: 'Open in browser', isSearch: true,
-  });
 
   // Deduplicate
   const seen = new Set();

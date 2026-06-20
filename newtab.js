@@ -256,7 +256,18 @@ async function performSearch(query) {
   const lower = query.toLowerCase();
   let results = [];
 
-  // 1. Bookmarks (local)
+  // 1. Web search — always first
+  if (sources.web) {
+    results.push({
+      type: 'web',
+      title: `Search "${query}" with your default search engine`,
+      url: query,
+      subtitle: 'Open in browser',
+      isSearch: true,
+    });
+  }
+
+  // 2. Bookmarks
   if (sources.bookmarks) {
     const matches = allBookmarks.filter((b) =>
       b.title.toLowerCase().includes(lower) ||
@@ -270,7 +281,7 @@ async function performSearch(query) {
     results = results.concat(matches);
   }
 
-  // 2. Open Tabs (local)
+  // 3. Open Tabs
   if (sources.tabs) {
     const matches = allTabs.filter((t) =>
       t.title.toLowerCase().includes(lower) ||
@@ -287,7 +298,7 @@ async function performSearch(query) {
     results = results.concat(matches);
   }
 
-  // 3. History (async via API)
+  // 4. History — last, least useful
   if (sources.history) {
     const hist = await loadHistory(query);
     const matches = hist.slice(0, 8).map((h) => ({
@@ -297,17 +308,6 @@ async function performSearch(query) {
       subtitle: h.url,
     }));
     results = results.concat(matches);
-  }
-
-  // 4. Web search result (red pill at bottom)
-  if (sources.web) {
-    results.push({
-      type: 'web',
-      title: `Search "${query}" with your default search engine`,
-      url: query,
-      subtitle: 'Open in browser',
-      isSearch: true,
-    });
   }
 
   // Deduplicate by URL
