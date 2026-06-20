@@ -21,7 +21,20 @@
     "48": "icons/icon48.png",
     "128": "icons/icon128.png"
   },
+  "commands": {
+    "open-spotlight": {
+      "suggested_key": {
+        "default": "Ctrl+E",
+        "mac": "Command+E"
+      },
+      "description": "Open Spotlight Search"
+    }
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
   "action": {
-    "default_title": "Spotlight New Tab"
+    "default_title": "Spotlight Search (Ctrl+E)",
+    "default_popup": "popup.html"
   }
 }

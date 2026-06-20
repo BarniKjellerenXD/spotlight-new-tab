@@ -1,11 +1,12 @@
 <div align="center">
   <img src="icons/icon128.png" width="64" height="64" alt="Spotlight New Tab logo" />
-  <h1>Spotlight New Tab ✦</h1>
-  <p>A beautiful spotlight-style search overlay for your new tab page.</p>
+  <h1>Spotlight ✦</h1>
+  <p>A beautiful spotlight-style search overlay for your browser.</p>
   <p>Search bookmarks, history, open tabs, and the web — instantly.</p>
   <br/>
   <img src="https://img.shields.io/badge/Manifest-v3-blue" alt="Manifest V3"/>
   <img src="https://img.shields.io/badge/license-MIT-green" alt="MIT License"/>
+  <img src="https://img.shields.io/badge/-Ctrl%2BE%20Popup-brightgreen" alt="Ctrl+E Popup"/>
 </div>
 
 <br/>
@@ -18,12 +19,13 @@ https://github.com/user-attachments/assets/5aa002f3-3b15-4088-8fdd-0d65e8b5a265
 
 | | |
 |---|---|
+| **⌨️ Ctrl+E Popup** | Press `Ctrl+E` (or `Cmd+E` on Mac) from any page to open a floating spotlight search |
+| **🆕 New Tab** | Opens automatically as a full-page search when you open a new tab |
 | **🔍 Unified Search** | Type anything and instantly search across bookmarks, history, open tabs, and the web |
 | **⚡ Keyboard-First** | Navigate with `↑↓`, open with `↵`, open in new tab with `⌘↵`. No mouse needed |
 | **🏠 Quick Links** | Your most-visited sites appear as glassmorphism tiles when the search is empty |
 | **🎨 Glassmorphism Design** | Dark blurred backdrop, accent glow, smooth animations |
 | **⚙️ Customizable** | Toggle search sources, background blur, and time/date display |
-| **⌨️ Keyboard Shortcuts** | `⌘K` to focus search, `⌘B` for bookmarks, `⌘H` for history, `Esc` to clear |
 | **🔒 Privacy-First** | All data stays local. No analytics, no tracking, no data transmitted anywhere |
 
 ## 🚀 Installation
@@ -46,14 +48,12 @@ https://github.com/user-attachments/assets/5aa002f3-3b15-4088-8fdd-0d65e8b5a265
 
 | Key | Action |
 |---|---|
+| `Ctrl` `E` / `Cmd` `E` | Open spotlight popup from any page |
 | `Type anything` | Search bookmarks, history, and open tabs |
 | `↑` `↓` | Navigate through results |
 | `↵` | Open selected result |
 | `⌘` `↵` / `Ctrl` `↵` | Open in new tab |
-| `⌘` `K` / `Ctrl` `K` | Focus the search bar |
-| `Esc` | Clear search / close |
-| `⌘` `B` / `Ctrl` `B` | Browse bookmarks |
-| `⌘` `H` / `Ctrl` `H` | Browse history |
+| `Esc` | Clear search / close popup |
 
 ## ⚙️ Settings
 
