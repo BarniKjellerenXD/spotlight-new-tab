@@ -1,8 +1,10 @@
 {
   "manifest_version": 3,
   "name": "Spotlight New Tab",
-  "version": "1.0",
-  "description": "A spotlight-style search overlay for the new tab page, inspired by Zen Browser and Vivaldi Ctrl+E.",
+  "short_name": "Spotlight",
+  "version": "1.0.0",
+  "description": "A beautiful spotlight-style search overlay for your new tab page. Search bookmarks, history, open tabs, and the web — instantly.",
+  "homepage_url": "https://github.com/BarniKjellerenXD/spotlight-new-tab",
   "chrome_url_overrides": {
     "newtab": "newtab.html"
   },
@@ -15,8 +17,11 @@
     "search"
   ],
   "icons": {
-    "16": "icons/icon16.svg",
-    "48": "icons/icon48.svg",
-    "128": "icons/icon128.svg"
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "action": {
+    "default_title": "Spotlight New Tab"
   }
 }
