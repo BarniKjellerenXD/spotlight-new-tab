@@ -7,12 +7,22 @@
 
 // Prevent double-injection
 if (window.__spotlightOverlayActive) {
-  // Already open — focus the search input inside the iframe
-  document.getElementById('spotlight-overlay')?.querySelector('iframe')
-    ?.contentWindow?.postMessage({ action: 'spotlight-focus' }, '*');
   throw new Error('Overlay already active');
 }
 window.__spotlightOverlayActive = true;
+
+// Handle messages from background
+chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+  if (msg.action === 'spotlight-ping') {
+    sendResponse({ ok: true });
+    return true;
+  }
+  if (msg.action === 'spotlight-toggle') {
+    // Already loaded, just focus the search
+    document.getElementById('spotlight-overlay')?.querySelector('iframe')
+      ?.contentWindow?.postMessage({ action: 'spotlight-focus' }, '*');
+  }
+});
 
 // ── Create overlay ──
 const overlay = document.createElement('div');

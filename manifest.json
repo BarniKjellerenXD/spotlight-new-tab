@@ -24,12 +24,12 @@
     "128": "icons/icon128.png"
   },
   "commands": {
-    "_execute_action": {
+    "open-spotlight": {
       "suggested_key": {
         "default": "Ctrl+E",
         "mac": "Command+E"
       },
-      "description": "Open Spotlight Search"
+      "description": "Open Spotlight Search overlay"
     }
   },
   "background": {
