@@ -121,6 +121,15 @@
         </div>
       </div>
       <hr />
+      <h2>Custom Commands</h2>
+      <div id="custom-commands-list"></div>
+      <div id="custom-command-form">
+        <input type="text" id="cmd-name" placeholder="name (e.g. gh)" />
+        <input type="text" id="cmd-url" placeholder="URL with {{query}} (e.g. https://github.com/{{query}})" />
+        <input type="text" id="cmd-icon" placeholder="icon emoji (e.g. 🐙)" maxlength="2" />
+        <button id="cmd-add">Add</button>
+      </div>
+      <hr />
       <h2>Theme</h2>
       <label class="setting-row">
         <input type="checkbox" id="toggle-blur" checked />

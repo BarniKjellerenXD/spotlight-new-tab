@@ -21,6 +21,7 @@ let settings = {};
 
 const DEFAULT_SETTINGS = {
   resultOrder: ['tabs', 'web', 'bookmarks', 'history'],
+  customCommands: [],
 };
 
 /* ── Load settings from chrome.storage ── */
@@ -96,13 +97,128 @@ function loadHistory(query) {
   });
 }
 
+/* ── Command System ── */
+const BUILTIN_COMMANDS = [
+  {
+    id: 'newtab', name: '/newtab', icon: '➕',
+    description: 'Open a new tab. Add a query to search.',
+    keyword: '/newtab',
+    action: (args) => {
+      const url = args ? `https://www.google.com/search?q=${encodeURIComponent(args)}` : 'about:blank';
+      chrome.tabs.create({ url });
+      closePopup();
+    },
+  },
+  {
+    id: 'newwindow', name: '/newwindow', icon: '🗔',
+    description: 'Open a new window. Add a query to search.',
+    keyword: '/newwindow',
+    action: (args) => {
+      const url = args ? `https://www.google.com/search?q=${encodeURIComponent(args)}` : 'about:blank';
+      chrome.windows.create({ url });
+      closePopup();
+    },
+  },
+  {
+    id: 'private', name: '/private', icon: '🕶️',
+    description: 'Open an incognito window. Add a query to search.',
+    keyword: '/private',
+    action: (args) => {
+      const url = args ? `https://www.google.com/search?q=${encodeURIComponent(args)}` : 'about:blank';
+      chrome.windows.create({ url, incognito: true });
+      closePopup();
+    },
+  },
+];
+
+function getAllCommands() {
+  const builtins = [...BUILTIN_COMMANDS];
+  const customs = (settings.customCommands || []).map((c) => ({
+    id: `custom-${c.name}`,
+    name: `/${c.name}`,
+    icon: c.icon || '⚡',
+    description: c.url.replace('{{query}}', '<query>'),
+    keyword: `/${c.name}`,
+    isCustom: true,
+    action: (args) => {
+      const url = c.url.replace('{{query}}', encodeURIComponent(args || ''));
+      chrome.tabs.create({ url });
+      closePopup();
+    },
+  }));
+  return [...builtins, ...customs];
+}
+
+function isCommandInput(text) {
+  return text.startsWith('/');
+}
+
+function performCommandSearch(input) {
+  // Parse: /command arg1 arg2...
+  const parts = input.split(' ');
+  const cmdPart = parts[0].toLowerCase(); // e.g. "/newtab"
+  const args = parts.slice(1).join(' ');  // everything after the command
+
+  const all = getAllCommands();
+
+  // If we have an exact match on a command with args provided, execute directly
+  const exact = all.find((c) => c.keyword === cmdPart);
+  if (exact && args) {
+    // Show the command as the only result with its args displayed
+    currentResults = [{
+      type: 'command',
+      command: exact,
+      args: args,
+      title: `${exact.icon}  ${exact.name} ${args}`,
+      subtitle: exact.description,
+    }];
+    renderResults(currentResults);
+    return;
+  }
+
+  // Filter commands by what user typed
+  const matched = all.filter((c) => c.keyword.startsWith(cmdPart) || c.name.toLowerCase().includes(cmdPart.slice(1)));
+
+  if (matched.length === 0) {
+    // No matching commands — show "no results"
+    currentResults = [];
+    renderResults([]);
+    return;
+  }
+
+  // Build result items
+  currentResults = matched.map((cmd, i) => ({
+    type: 'command',
+    command: cmd,
+    args: args,
+    title: `${cmd.icon}  ${cmd.name}`,
+    subtitle: cmd.description,
+    isCommand: true,
+    priority: cmdPart === cmd.keyword ? 0 : 1, // exact match first
+  }));
+
+  // Sort: exact matches first
+  currentResults.sort((a, b) => (a.priority || 1) - (b.priority || 1));
+
+  renderResults(currentResults);
+}
+
 /* ── Search ── */
 let searchTimeout = null;
 
 function onSearchInput() {
   clearTimeout(searchTimeout);
   const query = searchInput.value.trim();
+
   if (!query) { clearResults(); hideResults(); return; }
+
+  // Command mode — input starts with /
+  if (isCommandInput(query)) {
+    showLoading();
+    searchTimeout = setTimeout(() => performCommandSearch(query), 50);
+    return;
+  }
+
   showLoading();
   searchTimeout = setTimeout(() => performSearch(query), 80);
 }
@@ -191,6 +307,9 @@ function renderResults(results) {
       img.width = 16; img.height = 16;
       img.onerror = () => { icon.textContent = getIcon(r.type); };
       icon.appendChild(img);
+    } else if (r.type === 'command' && r.command?.icon) {
+      icon.textContent = r.command.icon;
+      icon.style.fontSize = '16px';
     } else {
       icon.textContent = getIcon(r.type);
     }
@@ -236,6 +355,7 @@ function getIcon(type) {
     case 'history':  return '↻';
     case 'tab':      return '▣';
     case 'web':      return '↗';
+    case 'command':  return '⌘';
     default:         return '•';
   }
 }
@@ -246,6 +366,7 @@ function getTypeLabel(type) {
     case 'history':  return 'History';
     case 'tab':      return 'Tab';
     case 'web':      return 'Web';
+    case 'command':  return 'Command';
     default:         return type;
   }
 }
@@ -306,6 +427,12 @@ window.addEventListener('message', (event) => {
 
 /* ── Activate ── */
 function activateResult(r) {
+  // Commands
+  if (r.type === 'command' && r.command?.action) {
+    r.command.action(r.args || '');
+    return;
+  }
+
   if (r.isSearch) {
     chrome.search.query({ text: r.url });
     closePopup();

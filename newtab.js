@@ -40,6 +40,7 @@ const DEFAULT_SETTINGS = {
   blur:      true,
   showTime:  true,
   resultOrder: ['tabs', 'web', 'bookmarks', 'history'],
+  customCommands: [],
 };
 
 /* ── Settings ── */
@@ -146,6 +147,9 @@ async function init() {
     }
   });
   $('#settings-close').addEventListener('click', closeSettings);
+  $('#cmd-add')?.addEventListener('click', onAddCommand);
+  // Allow Enter in command form fields
+  $('#cmd-url')?.addEventListener('keydown', (e) => { if (e.key === 'Enter') onAddCommand(); });
   settingsPanel.addEventListener('click', (e) => {
     if (e.target === settingsPanel) closeSettings();
   });
@@ -261,6 +265,89 @@ function loadHistory(query) {
   });
 }
 
+/* ── Command System ── */
+const BUILTIN_COMMANDS = [
+  {
+    id: 'newtab', name: '/newtab', icon: '➕',
+    description: 'Open a new tab. Add a query to search.',
+    keyword: '/newtab',
+    action: (args) => {
+      const url = args ? `https://www.google.com/search?q=${encodeURIComponent(args)}` : 'about:blank';
+      chrome.tabs.create({ url });
+    },
+  },
+  {
+    id: 'newwindow', name: '/newwindow', icon: '🗔',
+    description: 'Open a new window. Add a query to search.',
+    keyword: '/newwindow',
+    action: (args) => {
+      const url = args ? `https://www.google.com/search?q=${encodeURIComponent(args)}` : 'about:blank';
+      chrome.windows.create({ url });
+    },
+  },
+  {
+    id: 'private', name: '/private', icon: '🕶️',
+    description: 'Open an incognito window. Add a query to search.',
+    keyword: '/private',
+    action: (args) => {
+      const url = args ? `https://www.google.com/search?q=${encodeURIComponent(args)}` : 'about:blank';
+      chrome.windows.create({ url, incognito: true });
+    },
+  },
+];
+
+function getAllCommands() {
+  const builtins = [...BUILTIN_COMMANDS];
+  const customs = (settings.customCommands || []).map((c) => ({
+    id: `custom-${c.name}`,
+    name: `/${c.name}`,
+    icon: c.icon || '⚡',
+    description: c.url.replace('{{query}}', '<query>'),
+    keyword: `/${c.name}`,
+    isCustom: true,
+    action: (args) => {
+      const url = c.url.replace('{{query}}', encodeURIComponent(args || ''));
+      chrome.tabs.create({ url });
+    },
+  }));
+  return [...builtins, ...customs];
+}
+
+function isCommandInput(text) {
+  return text.startsWith('/');
+}
+
+function performCommandSearch(input) {
+  const parts = input.split(' ');
+  const cmdPart = parts[0].toLowerCase();
+  const args = parts.slice(1).join(' ');
+  const all = getAllCommands();
+
+  const exact = all.find((c) => c.keyword === cmdPart);
+  if (exact && args) {
+    currentResults = [{
+      type: 'command', command: exact, args: args,
+      title: `${exact.icon}  ${exact.name} ${args}`,
+      subtitle: exact.description,
+    }];
+    renderResults(currentResults);
+    return;
+  }
+
+  const matched = all.filter((c) => c.keyword.startsWith(cmdPart) || c.name.toLowerCase().includes(cmdPart.slice(1)));
+  if (matched.length === 0) { currentResults = []; renderResults([]); return; }
+
+  currentResults = matched.map((cmd) => ({
+    type: 'command', command: cmd, args: args,
+    title: `${cmd.icon}  ${cmd.name}`,
+    subtitle: cmd.description,
+    isCommand: true,
+    priority: cmdPart === cmd.keyword ? 0 : 1,
+  }));
+  currentResults.sort((a, b) => (a.priority || 1) - (b.priority || 1));
+  renderResults(currentResults);
+}
+
 /* ── Search Logic ── */
 let searchTimeout = null;
 
@@ -276,6 +363,14 @@ function onSearchInput() {
   }
 
   quickWrapper.style.display = 'none';
+
+  // Command mode — input starts with /
+  if (isCommandInput(query)) {
+    showLoading();
+    searchTimeout = setTimeout(() => performCommandSearch(query), 50);
+    return;
+  }
+
   showLoading();
 
   searchTimeout = setTimeout(() => performSearch(query), 80);
@@ -383,6 +478,9 @@ function renderResults(results) {
       img.height = 18;
       img.onerror = () => { icon.textContent = getIcon(r.type); };
       icon.appendChild(img);
+    } else if (r.type === 'command' && r.command?.icon) {
+      icon.textContent = r.command.icon;
+      icon.style.fontSize = '18px';
     } else {
       icon.textContent = getIcon(r.type);
     }
@@ -439,6 +537,7 @@ function getIcon(type) {
     case 'history':  return '↻';
     case 'tab':      return '▣';
     case 'web':      return '↗';
+    case 'command':  return '⌘';
     default:         return '•';
   }
 }
@@ -449,6 +548,7 @@ function getTypeLabel(type) {
     case 'history':  return 'History';
     case 'tab':      return 'Tab';
     case 'web':      return 'Web';
+    case 'command':  return 'Command';
     default:         return type;
   }
 }
@@ -508,6 +608,12 @@ function onSearchKeydown(e) {
 
 /* ── Activate Result ── */
 function activateResult(r) {
+  // Commands
+  if (r.type === 'command' && r.command?.action) {
+    r.command.action(r.args || '');
+    return;
+  }
+
   if (r.isSearch) {
     // Perform web search
     chrome.search.query({ text: r.url });
@@ -626,6 +732,7 @@ function openSettings() {
   $('#toggle-time').checked      = settings.showTime;
 
   syncOrderControls();
+  renderCustomCommands();
 
   settingsPanel.classList.add('open');
 }
@@ -681,6 +788,61 @@ function syncOrderControls() {
     el.querySelector('.order-down').disabled = i === ordered.length - 1;
     el.querySelector('.order-down').style.opacity = i === ordered.length - 1 ? '0.3' : '1';
   });
+}
+
+/* ── Custom Commands Management ── */
+function renderCustomCommands() {
+  const list = $('#custom-commands-list');
+  if (!list) return;
+  const cmds = settings.customCommands || [];
+
+  if (cmds.length === 0) {
+    list.innerHTML = '<div class="empty-commands">No custom commands yet. Add one below.</div>';
+    return;
+  }
+
+  list.innerHTML = cmds.map((c, i) => `
+    <div class="custom-cmd-item">
+      <span class="cmd-icon">${c.icon || '⚡'}</span>
+      <span class="cmd-name">/${c.name}</span>
+      <span class="cmd-url-text">${c.url}</span>
+      <button class="cmd-remove" data-index="${i}" title="Remove">✕</button>
+    </div>
+  `).join('');
+
+  list.querySelectorAll('.cmd-remove').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const idx = parseInt(btn.dataset.index);
+      settings.customCommands.splice(idx, 1);
+      saveSettings();
+      renderCustomCommands();
+    });
+  });
+}
+
+function onAddCommand() {
+  const name = $('#cmd-name').value.trim();
+  const url = $('#cmd-url').value.trim();
+  const icon = $('#cmd-icon').value.trim() || '⚡';
+
+  if (!name || !url) return;
+  if (!url.includes('{{query}}')) {
+    // Auto-append {{query}} if user didn't add it
+    // Or just add it at the end
+  }
+
+  const cmds = settings.customCommands || [];
+  // Check for duplicate name
+  if (cmds.some((c) => c.name === name)) return;
+
+  cmds.push({ name, url, icon });
+  settings.customCommands = cmds;
+  saveSettings();
+
+  $('#cmd-name').value = '';
+  $('#cmd-url').value = '';
+  $('#cmd-icon').value = '';
+  renderCustomCommands();
 }
 
 /* ── Start ── */

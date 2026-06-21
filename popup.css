@@ -320,6 +320,12 @@ html, body {
   border-color: rgba(255, 138, 128, 0.12);
 }
 
+.result-type-command {
+  color: #bb86fc;
+  background: rgba(187, 134, 252, 0.08);
+  border-color: rgba(187, 134, 252, 0.12);
+}
+
 /* ---- Loading ── */
 #results-list.loading::after {
   content: '';
